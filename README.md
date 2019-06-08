@@ -16,3 +16,22 @@
 
 > -   Doit contenir les étapes de conceptions, pk avoir choisi des threads, des mutex...
 > -   Doit contenir un diagramme réseau de petri
+
+### Demande utilisateur :
+
+> -   Nombre de conteneur maximum
+> -   Nombre de chaine
+>     -   Nombre d'atelier pour cette chaine
+>     -   Nombre de composant nécessaire pour chaque atelier
+>     -   Temps de production
+
+> Atelier 0 : tout à gauche de la chaine, ..., Atelier n : dernier de la chaine = produit fini
+
+### Tâches à faire
+
+> -   Menu utilisateur
+>     -   Création de n ateliers
+>     -   Demande du nombre de composants par atelier
+>     -   Demande temps de production
+
+> -   Fonction d'affichage des statistiques
