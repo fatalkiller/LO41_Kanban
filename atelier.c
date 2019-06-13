@@ -8,7 +8,7 @@ void init_boite_aux_lettres()
     /*  Creation de la clé IPC 					*/
     /*  key_t ftok(const char *pathname, int proj_id);              */
     /****************************************************************/
-    if ((key = ftok("./tmp", 'a')) == -1)
+    if ((key = ftok("/tmp", 'a')) == -1)
     {
         perror("Erreur de creation de la clé \n");
         exit(1);
