@@ -35,3 +35,7 @@
 >     -   Demande temps de production
 
 > -   Fonction d'affichage des statistiques
+
+### COMPILE CMD
+
+gcc test.c -pthread -Wall -Wextra -Werror
