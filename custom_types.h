@@ -1,8 +1,7 @@
 // Carte magnétique
 struct CarteMagnetique
 {
-    long type; // type pour l'envoi du message dans la file de message (= 1 ici)
-    // int idAtelierDemandeur;   // Indice dans tableau de thread atelier demandeur
+    long type;                // type pour l'envoi du message dans la file de message (= 1 ici)
     int idAtelierFournisseur; // Indice dans tableau de thread atelier fournisseur
     int qtyMax;               // Contenance max d'un conteneur
     char *nomPiece;           // Nom de la pièce (string)
