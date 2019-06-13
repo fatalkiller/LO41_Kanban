@@ -4,12 +4,13 @@
 #include <unistd.h>
 #include <sys/ipc.h>
 #include <sys/msg.h>
+#include <string.h>
 
 #include "custom_types.h"
 
 int auto_idAtelier = 0; // ID atelier => auto incrémenté à la création d'un atelier
 
-pthread_t *tid; // Tableau des threads : un par atelier
+pthread_t *tid;           // Tableau des threads : un par atelier
 pthread_t homme_flux_tid; // Id thread homme-flux
 
 pthread_mutex_t *mutex; // Tableau des mutexs pour chaque atelier
@@ -40,7 +41,7 @@ void *atelier_job(void *);
 void produire(struct ParamAtelier *);
 void checkComposants(struct ParamAtelier *);
 void envoiCarteMagnetique(struct Conteneur *);
-void init_factory(struct ParamFactory, struct ParamAtelier *);
+void init_factory(struct ParamFactory *, struct ParamAtelier *);
 
 void status_atelier_full(struct ParamAtelier *);
 void status_atelier_short(struct ParamAtelier *);
