@@ -184,6 +184,9 @@ void envoiCarteMagnetique(struct Conteneur *arg)
 {
     if (&arg->carte != NULL)
     {
+        // Modifie le type du message envoyé (doit être différent de 0)
+        &arg->carte->type = 1;
+
         // Envoyer la carte magnétique dans la file de message de l'homme flux
         if (msgsnd(msgid, &arg->carte, sizeof(arg->carte), 0) == -1)
         {
@@ -205,32 +208,35 @@ void status_atelier_full(struct ParamAtelier *pa)
 
     // Affiche la liste des ateliers clients de cet atelier
     printf("Liste des clients :\n");
-    for (int i = 0; i < sizeof(pa->clients) / 8; i++)
+    for (int i = 0; i < sizeof(pa->clients) / sizeof(int *); i++)
     {
         printf("  - Atelier %d\n", pa->clients[i]);
     }
 
-    // Affiche les ressources nécessaires à cet atelier
-    printf("Ressources nécessaires : \n");
-    printf("   _____________\n");
-    printf("  | TypeR | Qty |\n");
-
-    for (int i = 0; i < sizeof(pa->ressources); i++)
+    if (pa->idAtelier > 0)
     {
-        printf("  |   %d   |  %d  |\n", pa->ressources[i][0], pa->ressources[i][1]);
-    }
-    printf("   ____________\n");
+        // Affiche les ressources nécessaires à cet atelier
+        printf("Ressources nécessaires : \n");
+        printf("   _____________\n");
+        printf("  | TypeR | Qty |\n");
 
-    // Affiche la liste des conteneuers actuellement dans l'atelier
-    printf("Conteneurs dans l'atelier :\n");
-    printf("   _____________\n");
-    printf("  | TypeR | Qty |\n");
+        for (int i = 0; i < sizeof(pa->ressources) / sizeof(int **); i++)
+        {
+            printf("  |   %d   |  %d  |\n", pa->ressources[i][0], pa->ressources[i][1]);
+        }
+        printf("   ____________\n");
 
-    for (int i = 0; i < sizeof(pa->conteneur); i++)
-    {
-        printf("  |   %d   |  %d  |\n", pa->conteneur[i]->carte->idAtelierFournisseur, pa->conteneur[i]->qte);
+        // Affiche la liste des conteneuers actuellement dans l'atelier
+        printf("Conteneurs dans l'atelier :\n");
+        printf("   _____________\n");
+        printf("  | TypeR | Qty |\n");
+
+        for (int i = 0; i < sizeof(pa->conteneur) / sizeof(struct Conteneur **); i++)
+        {
+            printf("  |   %d   |  %d  |\n", pa->conteneur[i]->carte->idAtelierFournisseur, pa->conteneur[i]->qte);
+        }
+        printf("   _____________\n");
     }
-    printf("   _____________\n");
 
     printf("##########################\n");
 }
@@ -242,16 +248,19 @@ void status_atelier_short(struct ParamAtelier *pa)
     printf("Qty de pièces produites/boucle : %d\n", pa->qtyPieceParConteneur);
     printf("=> Nb pièces à produire : %d\n", statusAteliers[pa->idAtelier]);
 
-    // Affiche la liste des conteneuers actuellement dans l'atelier
-    printf("Conteneurs dans l'atelier :\n");
-    printf("   _____________\n");
-    printf("  | TypeR | Qty |\n");
-
-    for (int i = 0; i < sizeof(pa->conteneur); i++)
+    if (pa->idAtelier > 0)
     {
-        printf("  |   %d   |  %d  |\n", pa->conteneur[i]->carte->idAtelierFournisseur, pa->conteneur[i]->qte);
+        // Affiche la liste des conteneuers actuellement dans l'atelier
+        printf("Conteneurs dans l'atelier :\n");
+        printf("   _____________\n");
+        printf("  | TypeR | Qty |\n");
+
+        for (int i = 0; i < sizeof(pa->conteneur); i++)
+        {
+            printf("  |   %d   |  %d  |\n", pa->conteneur[i]->carte->idAtelierFournisseur, pa->conteneur[i]->qte);
+        }
+        printf("   _____________\n");
     }
-    printf("   _____________\n");
 
     printf("##########################\n");
 }
@@ -260,7 +269,7 @@ void status_factory_short()
 {
     for (int i = 0; i < sizeof(params_ateliers); i++)
     {
-        status_atelier_short(&params_ateliers[i]);
+        status_atelier_short(params_ateliers[i]);
     }
 }
 
@@ -268,14 +277,15 @@ void status_factory_full()
 {
     for (int i = 0; i < sizeof(params_ateliers); i++)
     {
-        status_atelier_full(&params_ateliers[i]);
+        status_atelier_full(params_ateliers[i]);
     }
 }
 
-void init_factory(struct ParamFactory *pf, struct ParamAtelier *pas)
+void init_factory(struct ParamFactory *pf, struct ParamAtelier **pas)
 {
     // Stockage des paramètres de tous les ateliers
     params_ateliers = pas;
+
     // Init tableau des threads : un par atelier
     tid = malloc(pf->nbAteliers * sizeof(pthread_t));
     // Init tableau des mutexs pour chaque atelier
@@ -291,7 +301,7 @@ void init_factory(struct ParamFactory *pf, struct ParamAtelier *pas)
 
     // Création de la file de message
     // (boite au lettre de l'homme-flux)
-    init_boite_aux_lettres();
+    // init_boite_aux_lettres();
 
     // Initialisation aire de collecte
     aireDeCollecte.nbConteneurVideActuel = pf->nbConteneursVide;
@@ -313,10 +323,18 @@ void init_factory(struct ParamFactory *pf, struct ParamAtelier *pas)
     // Initialisation des ateliers
     for (size_t i = 0; i < pf->nbAteliers; i++)
     {
+        printf("id ATELIER : %d\n", pas[i]->idAtelier);
         // Assignation du numéro d'atelier
-        pas[i].idAtelier = auto_idAtelier;
+        params_ateliers[i]->idAtelier = auto_idAtelier;
         // Incrémentation du numéro d'atelier, pour le suivant
         auto_idAtelier++;
+
+        if (params_ateliers[i]->idAtelier > 0)
+        {
+            // Création du tableaux de conteneurs de l'atelier
+            printf("##SIZE RESSOURCES : %ld\n", sizeof(params_ateliers[i]->ressources));
+            // params_ateliers[i]->conteneur = malloc()
+        }
 
         // Création de son aire de conteneur plein
         aireDeCollecte.conteneursPlein[i] = malloc(pf->nbConteneursParClient * sizeof(struct Conteneur *));
@@ -326,10 +344,9 @@ void init_factory(struct ParamFactory *pf, struct ParamAtelier *pas)
         {
             // Création carte magnétique
             struct CarteMagnetique cm;
-            cm.idAtelierFournisseur = pas[i].idAtelier;
-            cm.qtyMax = pas[i].qtyPieceParConteneur;
-            cm.nomPiece = pas[i].nomAtelier;
-
+            cm.idAtelierFournisseur = params_ateliers[i]->idAtelier;
+            cm.qtyMax = params_ateliers[i]->qtyPieceParConteneur;
+            strcpy(cm.nomPiece, params_ateliers[i]->nomAtelier);
             // Création du conteneur
             // Attache de la carte magnétique
             struct Conteneur c;
@@ -341,17 +358,17 @@ void init_factory(struct ParamFactory *pf, struct ParamAtelier *pas)
         }
 
         // Création du thread atelier
-        if (pthread_create(&tid[pas[i].idAtelier], NULL, atelier_job, (void *)&pas[i]) < 0)
+        if (pthread_create(&tid[params_ateliers[i]->idAtelier], NULL, atelier_job, (void *)&params_ateliers[i]) < 0)
         {
-            fprintf(stderr, "Erreur création thread atelier %d\n", pas[i].idAtelier);
+            fprintf(stderr, "Erreur création thread atelier %d\n", params_ateliers[i]->idAtelier);
             exit(1);
         }
     }
 
     // Création de l'homme-flux
-    if (pthread_create(&homme_flux_tid, NULL, homme_flux, NULL) < 0)
-    {
-        fprintf(stderr, "Erreur création thread homme-flux\n");
-        exit(1);
-    }
+    // if (pthread_create(&homme_flux_tid, NULL, homme_flux, NULL) < 0)
+    // {
+    //     fprintf(stderr, "Erreur création thread homme-flux\n");
+    //     exit(1);
+    // }
 }
