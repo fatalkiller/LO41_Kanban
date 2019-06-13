@@ -33,7 +33,7 @@ struct AireDeCollecte aireDeCollecte;
 struct CarteMagnetique *carteCourante;
 
 // Liste des paramètres atelier
-struct ParamAtelier *params_ateliers;
+struct ParamAtelier **params_ateliers;
 
 void init_boite_aux_lettres();
 void *homme_flux(void *);
@@ -41,7 +41,7 @@ void *atelier_job(void *);
 void produire(struct ParamAtelier *);
 void checkComposants(struct ParamAtelier *);
 void envoiCarteMagnetique(struct Conteneur *);
-void init_factory(struct ParamFactory *, struct ParamAtelier *);
+void init_factory(struct ParamFactory *, struct ParamAtelier **);
 
 void status_atelier_full(struct ParamAtelier *);
 void status_atelier_short(struct ParamAtelier *);
