@@ -23,7 +23,9 @@ struct ParamAtelier
     int tpsProd;                  // Temps de production en secondes
     int qtyPieceParConteneur;     // Quantité de composant dans un conteneur de ce type de pièce
     int **ressources;             // Tableau contenant les types et quantités nécessaires de chaques ressources
-    int *clients;                 // Listes des ateliers clients
+                                  // avec ressources[i][0] => Type de ressource
+                                  //      ressources[i][1] => Quantité de cette ressource
+    int *clients;                 // Listes des id ateliers clients
     struct Conteneur **conteneur; // Conteneur actuellement utilisé dans l'atelier
 };
 
