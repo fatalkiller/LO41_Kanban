@@ -16,12 +16,16 @@ int main()
     // Atelier 0 => ressources infinies
     struct ParamAtelier pa0;
     // pa0.idAtelier = 0;
-    pa0.nomAtelier = malloc(sizeof("Fibre") * sizeof(char));
-    strcpy(pa0.nomAtelier, "Fibre");
+    char *str0 = "Fibre";
+    pa0.nomAtelier = malloc(sizeof(str0) * sizeof(char));
+    strcpy(pa0.nomAtelier, str0);
     pa0.tpsProd = 5;
     pa0.qtyPieceParConteneur = 20;
-    pa0.clients = malloc(1 * sizeof(int));
+    pa0.nbRessources = 0;
+    pa0.nbClients = 1;
+    pa0.clients = malloc(pa0.nbClients * sizeof(int));
     pa0.clients[0] = 1;
+    pa0.nbConteneurs = 0;
     pas[0] = &pa0;
 
     // Atelier 1
@@ -31,12 +35,15 @@ int main()
     strcpy(pa1.nomAtelier, "FibreColor");
     pa1.tpsProd = 10;
     pa1.qtyPieceParConteneur = 20;
-    pa1.ressources = malloc(1 * sizeof(int *));
-    pa1.ressources[0] = malloc(1 * sizeof(int));
+    pa1.nbRessources = 1;
+    pa1.ressources = malloc(pa1.nbRessources * sizeof(int *));
+    pa1.ressources[0] = malloc(2 * sizeof(int));
     pa1.ressources[0][0] = 0;  // Type de ressource
     pa1.ressources[0][1] = 10; // Quantité de ressource
-    pa1.clients = malloc(1 * sizeof(int));
+    pa1.nbClients = 1;
+    pa1.clients = malloc(pa1.nbClients * sizeof(int));
     pa1.clients[0] = 2;
+    pa1.nbConteneurs = mon_usine.nbConteneursParClient;
     pas[1] = &pa1;
 
     // Atelier 2
@@ -46,12 +53,15 @@ int main()
     strcpy(pa2.nomAtelier, "Fil");
     pa2.tpsProd = 7;
     pa2.qtyPieceParConteneur = 40;
-    pa2.ressources = malloc(1 * sizeof(int *));
-    pa2.ressources[0] = malloc(1 * sizeof(int));
+    pa2.nbRessources = 1;
+    pa2.ressources = malloc(pa2.nbRessources * sizeof(int *));
+    pa2.ressources[0] = malloc(2 * sizeof(int));
     pa2.ressources[0][0] = 1;  // Type de ressource
     pa2.ressources[0][1] = 20; // Quantité de ressource
-    pa2.clients = malloc(1 * sizeof(int));
+    pa2.nbClients = 1;
+    pa2.clients = malloc(pa2.nbClients * sizeof(int));
     pa2.clients[0] = 3;
+    pa2.nbConteneurs = mon_usine.nbConteneursParClient;
     pas[2] = &pa2;
 
     // Atelier 3
@@ -61,12 +71,15 @@ int main()
     strcpy(pa3.nomAtelier, "Tissus");
     pa3.tpsProd = 10;
     pa3.qtyPieceParConteneur = 10;
-    pa3.ressources = malloc(1 * sizeof(int *));
-    pa3.ressources[0] = malloc(1 * sizeof(int));
+    pa3.nbRessources = 1;
+    pa3.ressources = malloc(pa3.nbRessources * sizeof(int *));
+    pa3.ressources[0] = malloc(2 * sizeof(int));
     pa3.ressources[0][0] = 2;  // Type de ressource
     pa3.ressources[0][1] = 15; // Quantité de ressource
-    pa3.clients = malloc(1 * sizeof(int));
+    pa3.nbClients = 1;
+    pa3.clients = malloc(pa3.nbClients * sizeof(int));
     pa3.clients[0] = -1;
+    pa3.nbConteneurs = mon_usine.nbConteneursParClient;
     pas[3] = &pa3;
 
     printf("Init param ateliers OK\n");
