@@ -34,9 +34,10 @@ struct CarteMagnetique *carteCourante;
 
 // Liste des paramètres atelier
 struct ParamAtelier **params_ateliers;
+struct ParamFactory *param_factory;
 
 void init_boite_aux_lettres();
-void *homme_flux(void *);
+void *homme_flux();
 void *atelier_job(void *);
 void produire(struct ParamAtelier *);
 void checkComposants(struct ParamAtelier *);
