@@ -220,27 +220,23 @@ void status_atelier_full(struct ParamAtelier *pa)
     {
         // Affiche les ressources nécessaires à cet atelier
         printf("Ressources nécessaires : \n");
-        printf("   _____________\n");
-        printf("  | TypeR | Qty |\n");
+        printf("   TypeR | Qty \n");
 
         for (int i = 0; i < pa->nbRessources; i++)
         {
-            printf("  |   %d   |  %d  |\n", pa->ressources[i][0], pa->ressources[i][1]);
+            printf("     %d   | %d  \n", pa->ressources[i][0], pa->ressources[i][1]);
         }
-        printf("   ____________\n");
     }
     if (pa->nbConteneurs > 0)
     {
         // Affiche la liste des conteneuers actuellement dans l'atelier
         printf("Conteneurs dans l'atelier :\n");
-        printf("   _____________\n");
-        printf("  | TypeR | Qty |\n");
+        printf("   TypeR | Qty \n");
 
         for (int i = 0; i < pa->nbConteneurs; i++)
         {
-            printf("  |   %d   |  %d  |\n", pa->conteneur[i]->carte->idAtelierFournisseur, pa->conteneur[i]->qte);
+            printf("     %d   |  %d  \n", pa->conteneur[i]->carte->idAtelierFournisseur, pa->conteneur[i]->qte);
         }
-        printf("   _____________\n");
     }
 
     printf("##########################\n");
@@ -257,14 +253,11 @@ void status_atelier_short(struct ParamAtelier *pa)
     {
         // Affiche la liste des conteneuers actuellement dans l'atelier
         printf("Conteneurs dans l'atelier :\n");
-        printf("   _____________\n");
-        printf("  | TypeR | Qty |\n");
-
+        printf("   TypeR | Qty \n");
         for (int i = 0; i < pa->nbConteneurs; i++)
         {
-            printf("  |   %d   |  %d  |\n", pa->conteneur[i]->carte->idAtelierFournisseur, pa->conteneur[i]->qte);
+            printf("     %d   |  %d  \n", pa->conteneur[i]->carte->idAtelierFournisseur, pa->conteneur[i]->qte);
         }
-        printf("   _____________\n");
     }
 
     printf("##########################\n");
@@ -340,6 +333,9 @@ void init_factory(struct ParamFactory *pf, struct ParamAtelier **pas)
         {
             // Création du tableaux de conteneurs de l'atelier
             params_ateliers[i]->conteneur = malloc(params_ateliers[i]->nbConteneurs * sizeof(struct Conteneur *));
+            // Remise à zéro du nombre de conteneur
+            // car les ateliers sont initialisés sans conteneur
+            params_ateliers[i]->nbConteneurs = 0;
         }
         else
         {
@@ -369,14 +365,14 @@ void init_factory(struct ParamFactory *pf, struct ParamAtelier **pas)
         }
         printf("Ok\n");
 
-        printf("  Création du THREAD.........");
-        // Création du thread atelier
-        if (pthread_create(&tid[params_ateliers[i]->idAtelier], NULL, atelier_job, (void *)&params_ateliers[i]) < 0)
-        {
-            fprintf(stderr, "Erreur\n");
-            exit(1);
-        }
-        printf("Ok\n");
+        // printf("  Création du THREAD.........");
+        // // Création du thread atelier
+        // if (pthread_create(&tid[params_ateliers[i]->idAtelier], NULL, atelier_job, (void *)&params_ateliers[i]) < 0)
+        // {
+        //     fprintf(stderr, "Erreur\n");
+        //     exit(1);
+        // }
+        // printf("Ok\n");
     }
 
     // Création de l'homme-flux
