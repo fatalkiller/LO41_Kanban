@@ -2,9 +2,10 @@
 #include <pthread.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <sys/ipc.h>
-#include <sys/msg.h>
 #include <string.h>
+#include <signal.h>
+#include <sys/msg.h>
+#include <sys/ipc.h>
 
 #include "custom_types.h"
 
@@ -43,6 +44,9 @@ void produire(struct ParamAtelier *);
 void checkComposants(struct ParamAtelier *);
 void envoiCarteMagnetique(struct Conteneur *);
 void init_factory(struct ParamFactory *, struct ParamAtelier **);
+
+void traitantSIGINT();
+void clear_factory();
 
 void status_atelier_full(struct ParamAtelier *);
 void status_atelier_short(struct ParamAtelier *);

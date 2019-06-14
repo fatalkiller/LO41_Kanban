@@ -55,34 +55,37 @@ void *homme_flux()
 
 void *atelier_job(void *arg)
 {
-    struct ParamAtelier params = *(struct ParamAtelier *)arg;
+    struct ParamAtelier *params = (struct ParamAtelier *)arg;
+    sleep(3);
+
     while (1)
     {
         // Vérouille l'accès au status de l'atelier
         pthread_mutex_lock(&mutexStatus);
         // Tant que l'atelier doit attendre
-        while (statusAteliers[params.idAtelier] == 0)
+        while (statusAteliers[params->idAtelier] == 0)
         {
+            printf("\n## Atelier %d en attente d'une commande\n", params->idAtelier);
             pthread_mutex_unlock(&mutexStatus);
 
             // Vérouille l'accès à l'atelier
-            pthread_mutex_lock(&mutex[params.idAtelier]);
+            pthread_mutex_lock(&mutex[params->idAtelier]);
             // Mise en attente de l'atelier
-            pthread_cond_wait(&conditions[params.idAtelier], &mutex[params.idAtelier]);
+            pthread_cond_wait(&conditions[params->idAtelier], &mutex[params->idAtelier]);
 
-            pthread_mutex_unlock(&mutex[params.idAtelier]);
+            pthread_mutex_unlock(&mutex[params->idAtelier]);
         }
 
         // L'atelier check les composants nécessaires
         // (sauf si c'est l'atelier de base avec ressources infinies)
-        if (params.idAtelier > 0)
+        if (params->idAtelier > 0)
         {
-            checkComposants(&params);
+            checkComposants(params);
         }
 
         // On a produit un composant
         pthread_mutex_lock(&mutexStatus);
-        statusAteliers[params.idAtelier]--;
+        statusAteliers[params->idAtelier]--;
         pthread_mutex_unlock(&mutexStatus);
     }
 }
@@ -281,6 +284,9 @@ void status_factory_full()
 
 void init_factory(struct ParamFactory *pf, struct ParamAtelier **pas)
 {
+    // Configure le signal SIGINT (Ctrl-C) pour nettoyer l'usine
+    signal(SIGINT, traitantSIGINT);
+
     // Stockage des paramètres de tous les ateliers
     params_ateliers = pas;
     // Stockage des paramètres de l'usine
@@ -301,7 +307,7 @@ void init_factory(struct ParamFactory *pf, struct ParamAtelier **pas)
 
     // Création de la file de message
     // (boite au lettre de l'homme-flux)
-    // init_boite_aux_lettres();
+    init_boite_aux_lettres();
 
     // Initialisation aire de collecte
     aireDeCollecte.nbConteneurVideActuel = param_factory->nbConteneursVide;
@@ -365,20 +371,40 @@ void init_factory(struct ParamFactory *pf, struct ParamAtelier **pas)
         }
         printf("Ok\n");
 
-        // printf("  Création du THREAD.........");
-        // // Création du thread atelier
-        // if (pthread_create(&tid[params_ateliers[i]->idAtelier], NULL, atelier_job, (void *)&params_ateliers[i]) < 0)
-        // {
-        //     fprintf(stderr, "Erreur\n");
-        //     exit(1);
-        // }
-        // printf("Ok\n");
+        printf("  Création du THREAD.........");
+        // Création du thread atelier
+        if (pthread_create(&tid[params_ateliers[i]->idAtelier], NULL, atelier_job, (void *)params_ateliers[i]) < 0)
+        {
+            fprintf(stderr, "Erreur\n");
+            exit(1);
+        }
+        printf("Ok\n");
     }
 
     // Création de l'homme-flux
-    // if (pthread_create(&homme_flux_tid, NULL, homme_flux, NULL) < 0)
-    // {
-    //     fprintf(stderr, "Erreur création thread homme-flux\n");
-    //     exit(1);
-    // }
+    if (pthread_create(&homme_flux_tid, NULL, homme_flux, NULL) < 0)
+    {
+        fprintf(stderr, "Erreur création thread homme-flux\n");
+        exit(1);
+    }
+}
+
+void clear_factory()
+{
+    // Termine les threads ateliers
+    // pthread_joint()
+
+    // Suppression de l"homme flux
+
+    // Supprime la file de message de l'homme-flux
+    msgctl(msgid, IPC_RMID, NULL);
+    printf("## File de message de l'homme-flux %d supprimée\n", msgid);
+
+    // Suppression de toutes les allocations
+}
+
+void traitantSIGINT()
+{
+    clear_factory();
+    exit(0);
 }
