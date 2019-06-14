@@ -82,13 +82,13 @@ int main()
     pa3.nbConteneurs = mon_usine.nbConteneursParClient;
     pas[3] = &pa3;
 
-    printf("Init param ateliers OK\n");
+    printf("########## Init param ateliers des tests OK ###############\n");
 
     init_factory(&mon_usine, pas);
 
-    printf("Init factory OK\n");
+    printf("########## Init factory OK##################################\n");
 
-    // status_factory_full();
+    status_factory_full();
 
     return 0;
 }
