@@ -90,5 +90,17 @@ int main()
 
     status_factory_full();
 
+    // Attendre fin de l'initialisation
+    // sleep(5);
+
+    // Lancement d'une commande d'un composant
+    // statusAteliers[0] = 1;
+
+    for (int i = 0; i < mon_usine.nbAteliers; i++)
+    {
+        pthread_join(tid[i], NULL);
+    }
+    pthread_join(homme_flux_tid, NULL);
+
     return 0;
 }
