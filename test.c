@@ -20,12 +20,12 @@ int main()
     pa0.nomAtelier = malloc(sizeof(str0) * sizeof(char));
     strcpy(pa0.nomAtelier, str0);
     pa0.tpsProd = 5;
-    pa0.qtyPieceParConteneur = 20;
+    pa0.qtyPieceParConteneur = 40;
     pa0.nbRessources = 0;
     pa0.nbClients = 1;
     pa0.clients = malloc(pa0.nbClients * sizeof(int));
     pa0.clients[0] = 1;
-    pa0.nbConteneurs = 0;
+    // pa0.nbConteneurs = 0;
     pas[0] = &pa0;
 
     // Atelier 1
@@ -34,16 +34,16 @@ int main()
     pa1.nomAtelier = malloc(sizeof("FibreColor") * sizeof(char));
     strcpy(pa1.nomAtelier, "FibreColor");
     pa1.tpsProd = 10;
-    pa1.qtyPieceParConteneur = 20;
+    pa1.qtyPieceParConteneur = 30;
     pa1.nbRessources = 1;
     pa1.ressources = malloc(pa1.nbRessources * sizeof(int *));
     pa1.ressources[0] = malloc(2 * sizeof(int));
     pa1.ressources[0][0] = 0;  // Type de ressource
-    pa1.ressources[0][1] = 10; // Quantité de ressource
+    pa1.ressources[0][1] = 30; // Quantité de ressource
     pa1.nbClients = 1;
     pa1.clients = malloc(pa1.nbClients * sizeof(int));
     pa1.clients[0] = 2;
-    pa1.nbConteneurs = mon_usine.nbConteneursParClient;
+    // pa1.nbConteneurs = mon_usine.nbConteneursParClient;
     pas[1] = &pa1;
 
     // Atelier 2
@@ -52,7 +52,7 @@ int main()
     pa2.nomAtelier = malloc(sizeof("Fil") * sizeof(char));
     strcpy(pa2.nomAtelier, "Fil");
     pa2.tpsProd = 7;
-    pa2.qtyPieceParConteneur = 40;
+    pa2.qtyPieceParConteneur = 20;
     pa2.nbRessources = 1;
     pa2.ressources = malloc(pa2.nbRessources * sizeof(int *));
     pa2.ressources[0] = malloc(2 * sizeof(int));
@@ -61,7 +61,7 @@ int main()
     pa2.nbClients = 1;
     pa2.clients = malloc(pa2.nbClients * sizeof(int));
     pa2.clients[0] = 3;
-    pa2.nbConteneurs = mon_usine.nbConteneursParClient;
+    // pa2.nbConteneurs = mon_usine.nbConteneursParClient;
     pas[2] = &pa2;
 
     // Atelier 3
@@ -79,7 +79,7 @@ int main()
     pa3.nbClients = 1;
     pa3.clients = malloc(pa3.nbClients * sizeof(int));
     pa3.clients[0] = -1;
-    pa3.nbConteneurs = mon_usine.nbConteneursParClient;
+    // pa3.nbConteneurs = mon_usine.nbConteneursParClient;
     pas[3] = &pa3;
 
     printf("########## Init param ateliers des tests OK ###############\n");
@@ -89,12 +89,25 @@ int main()
     printf("########## Init factory OK##################################\n");
 
     status_factory_full();
+    status_aire_de_collecte();
 
     // Attendre fin de l'initialisation
-    // sleep(5);
+    sleep(5);
 
     // Lancement d'une commande d'un composant
-    // statusAteliers[0] = 1;
+    int idAtelierCommande = 3;
+    statusAteliers[idAtelierCommande] = 1;
+    pthread_mutex_lock(&mutex[params_ateliers[idAtelierCommande]->idAtelier]);
+    pthread_cond_signal(&conditions[params_ateliers[idAtelierCommande]->idAtelier]);
+    pthread_mutex_unlock(&mutex[params_ateliers[idAtelierCommande]->idAtelier]);
+
+    while (1)
+    {
+        system("clear");
+        status_factory_short();
+        status_aire_de_collecte();
+        sleep(1);
+    }
 
     for (int i = 0; i < mon_usine.nbAteliers; i++)
     {

@@ -10,7 +10,7 @@ void init_boite_aux_lettres()
     /****************************************************************/
     if ((key = ftok("/tmp", 'a')) == -1)
     {
-        perror("Erreur de creation de la clé \n");
+        fprintf(stderr, "ERREUR de creation de la clé de la boite aux lettres\n");
         exit(1);
     }
 
@@ -20,7 +20,7 @@ void init_boite_aux_lettres()
     /****************************************************************/
     if ((msgid = msgget(key, IPC_CREAT | 0600)) == -1)
     {
-        perror("Erreur de creation de la file requete\n");
+        fprintf(stderr, "ERREUR de creation de la boite aux lettres\n");
         exit(1);
     }
 }
@@ -28,28 +28,28 @@ void init_boite_aux_lettres()
 void *homme_flux()
 {
     int msg;
-    struct CarteMagnetique cm;
 
     while (1)
     {
+        fprintf(stderr, "# HOMME FLUX EN ATTENTE DE MESSAGE\n");
         // Attente d'une carte magnétique d'un atelier
-        if ((msg = msgrcv(msgid, &cm, sizeof(cm), 0, 0)) == -1)
+        if ((msg = msgrcv(msgid, &carteCourante, sizeof(struct CarteMagnetique) - sizeof(long), 0, 0)) == -1)
         {
-            perror("HOMME-FLUX : Erreur de lecture message \n");
+            fprintf(stderr, "HOMME-FLUX : Erreur de lecture message \n");
             exit(1);
         }
 
         // On demande la production d'un composant dans l'atelier fournisseur
         // de la carte magnétique
         pthread_mutex_lock(&mutexStatus);
-        statusAteliers[cm.idAtelierFournisseur]++;
+        statusAteliers[carteCourante.idAtelierFournisseur]++;
         pthread_mutex_unlock(&mutexStatus);
 
         // Vérouille l'accès à l'atelier
-        pthread_mutex_lock(&mutex[cm.idAtelierFournisseur]);
+        pthread_mutex_lock(&mutex[carteCourante.idAtelierFournisseur]);
         // On réveille l'atelier de production fournisseur
-        pthread_cond_signal(&conditions[cm.idAtelierFournisseur]);
-        pthread_mutex_unlock(&mutex[cm.idAtelierFournisseur]);
+        pthread_cond_signal(&conditions[carteCourante.idAtelierFournisseur]);
+        pthread_mutex_unlock(&mutex[carteCourante.idAtelierFournisseur]);
     }
 }
 
@@ -65,7 +65,7 @@ void *atelier_job(void *arg)
         // Tant que l'atelier doit attendre
         while (statusAteliers[params->idAtelier] == 0)
         {
-            printf("\n## Atelier %d en attente d'une commande\n", params->idAtelier);
+            fprintf(stderr, "\n## Atelier %d en attente d'une commande\n", params->idAtelier);
             pthread_mutex_unlock(&mutexStatus);
 
             // Vérouille l'accès à l'atelier
@@ -78,14 +78,18 @@ void *atelier_job(void *arg)
 
         // L'atelier check les composants nécessaires
         // (sauf si c'est l'atelier de base avec ressources infinies)
-        if (params->idAtelier > 0)
+        if (params->nbRessources > 0)
         {
             checkComposants(params);
         }
+        produire(params);
 
         // On a produit un composant
+        printf("======= STATUS atelier %d = %d BEFORE LOCK\n", params->idAtelier, statusAteliers[params->idAtelier]);
         pthread_mutex_lock(&mutexStatus);
+        printf("======= STATUS atelier %d = %d AVANT\n", params->idAtelier, statusAteliers[params->idAtelier]);
         statusAteliers[params->idAtelier]--;
+        printf("======= STATUS atelier %d = %d APRES\n", params->idAtelier, statusAteliers[params->idAtelier]);
         pthread_mutex_unlock(&mutexStatus);
     }
 }
@@ -94,25 +98,35 @@ void produire(struct ParamAtelier *params)
 {
     // Cherche un conteneur vide
     pthread_mutex_lock(&mutexAireCollecte);
-    aireDeCollecte.nbConteneurVideActuel--;
-    struct Conteneur *contEnProduction = aireDeCollecte.conteneursVide[aireDeCollecte.nbConteneurVideActuel];
+    struct Conteneur contEnProduction;
+
     // On l'enlève de l'aire de collecte
-    aireDeCollecte.conteneursVide[aireDeCollecte.nbConteneurVideActuel] = NULL;
+    aireDeCollecte.nbConteneurVideActuel--;
+    memcpy(&aireDeCollecte.conteneursVide[aireDeCollecte.nbConteneurVideActuel], &contEnProduction, sizeof(struct Conteneur));
+    // free(&aireDeCollecte.conteneursVide[aireDeCollecte.nbConteneurVideActuel]);
+
     pthread_mutex_unlock(&mutexAireCollecte);
 
     // On attache la carte de l'homme-flux
-    contEnProduction->carte = carteCourante;
+    contEnProduction.cartePresente = 1;
+    memcpy(&contEnProduction.carte, &carteCourante, sizeof(struct CarteMagnetique));
 
     // On attend la production d'un composant
+    fprintf(stderr, "## PRODUCTION de l'Atelier %s pour %d sec\n", params->nomAtelier, params->tpsProd);
+
     sleep(params->tpsProd);
 
+    fprintf(stderr, "## FIN PRODUCTION de l'Atelier %s\n", params->nomAtelier);
+
     // On remplit le conteneur
-    contEnProduction->qte = contEnProduction->carte->qtyMax;
+    contEnProduction.qte = contEnProduction.carte.qtyMax;
 
     // On range le conteneur plein sur l'aire de collecte
     pthread_mutex_lock(&mutexAireCollecte);
-    int indexDernierConteneur = sizeof(aireDeCollecte.conteneursPlein[params->idAtelier]) - 1;
-    aireDeCollecte.conteneursPlein[params->idAtelier][indexDernierConteneur] = contEnProduction;
+
+    memcpy(&aireDeCollecte.conteneursPlein[params->idAtelier][aireDeCollecte.nbConteneurPleinParAtelier[params->idAtelier] - 1], &contEnProduction, sizeof(struct Conteneur));
+    aireDeCollecte.nbConteneurPleinParAtelier[params->idAtelier]++;
+
     pthread_mutex_unlock(&mutexAireCollecte);
 
     // On reveille les ateliers qui attendent la ressource produite par cet atelier
@@ -127,77 +141,120 @@ void produire(struct ParamAtelier *params)
     }
 }
 
+// Aller chercher un conteneur dans l'aire de collecte de type typeComposant
+// Si pas de conteneur dispo, mise en attente de l'atelier
+void prendreConteneurPleinAireDeCollecte(struct ParamAtelier *params, int typeComposant, int indexConteneur)
+{
+    fprintf(stderr, "## Atelier %s prend un conteneur %d dans l'aire de collecte\n", params->nomAtelier, typeComposant);
+    // Tant qu'il n'y a pas de conteneur contenant le matériaux voulu
+    while (aireDeCollecte.nbConteneurPleinParAtelier[typeComposant] == 0)
+    {
+        // Vérouille l'accès à l'atelier
+        pthread_mutex_lock(&mutex[params->idAtelier]);
+        // Mise en attente de l'atelier
+        pthread_cond_wait(&conditions[params->idAtelier], &mutex[params->idAtelier]);
+
+        pthread_mutex_unlock(&mutex[params->idAtelier]);
+    }
+
+    // Prendre un nouveau conteneur correspondant a typeComposant
+    pthread_mutex_lock(&mutexAireCollecte);
+
+    aireDeCollecte.nbConteneurPleinParAtelier[typeComposant]--;
+    int indexConteneurPleinAPrendre = aireDeCollecte.nbConteneurPleinParAtelier[typeComposant];
+
+    // Stocker le conteneur plein dans les conteneurs de l'atelier
+    memcpy(&params->conteneur[indexConteneur],
+           &aireDeCollecte.conteneursPlein[typeComposant][indexConteneurPleinAPrendre], sizeof(struct Conteneur));
+
+    // Enlever ce conteneur de l'aire de collecte
+    // free(&aireDeCollecte.conteneursPlein[typeComposant][indexConteneurPleinAPrendre]);
+
+    pthread_mutex_unlock(&mutexAireCollecte);
+}
+
 void checkComposants(struct ParamAtelier *params)
 {
+    // Si l'atelier n'a pas encore de conteneurs plein (juste après l'initialisation de ceux-ci)
+    // Alors récupérer un conteneur de chaque ressource
+    if (params->initConteneurs == 0)
+    {
+        // Pour chaque ressource nécessaire à la production
+        for (int i = 0; i < params->nbRessources; i++)
+        {
+            int typeComposant = params->ressources[i][0];
+            // Prendre un nouveau conteneur correspondant a typeComposant
+            prendreConteneurPleinAireDeCollecte(params, typeComposant, i);
+        }
+        params->initConteneurs = 1;
+    }
+    // Pour chaque ressource nécessaire à la production
     for (int i = 0; i < params->nbRessources; i++)
     {
         int typeComposant = params->ressources[i][0];
         int qtyComposant = params->ressources[i][1];
-        // Si il y a asses de composant dans le conteneur
-        if (params->conteneur[i]->qte > qtyComposant)
+
+        // On cherche si l'atelier a un conteneur de la ressource necéssaire
+        // Si c'est le cas
+        // Si il y a assez de composants dans le conteneur
+        if (params->conteneur[i].qte > qtyComposant)
         {
             // Prendre les composants nécessaires
-            params->conteneur[i]->qte -= qtyComposant;
+            params->conteneur[i].qte -= qtyComposant;
 
             // Prévenier l'homme-flux
-            envoiCarteMagnetique(params->conteneur[i]);
+            fprintf(stderr, "# Envoi carte magnetique de l'atelier %d\n", params->idAtelier);
+            envoiCarteMagnetique(&params->conteneur[i]);
         }
+        // Si il n'y en a pas assez, on prend qd meme le reste
+        // contenu dans le conteneur, et on déplace le conteneur
+        // dans l'aire de collecte des conteneurs vide
         else
         {
+            // On prends le reste des composants du conteneur
             // Quantité de composants nécessaires restant
-            int qtyRestante = params->conteneur[i]->qte - qtyComposant;
-            params->conteneur[i]->qte = 0;
+            int qtyRestante = qtyComposant - params->conteneur[i].qte;
+            params->conteneur[i].qte = 0;
 
             // Stock le conteneur vide de l'atelier dans l'aire de collecte
             pthread_mutex_lock(&mutexAireCollecte);
+
+            memcpy(&aireDeCollecte.conteneursVide[aireDeCollecte.nbConteneurVideActuel], &params->conteneur[i], sizeof(struct Conteneur));
             aireDeCollecte.nbConteneurVideActuel++;
-            aireDeCollecte.conteneursVide[aireDeCollecte.nbConteneurVideActuel] = params->conteneur[i];
+
             pthread_mutex_unlock(&mutexAireCollecte);
-            params->conteneur[i] = NULL;
 
-            // Tant qu'il n'y a pas de conteneur contenant le matériaux voulu
-            while (sizeof(aireDeCollecte.conteneursPlein[typeComposant]) == 0)
-            {
-                // Vérouille l'accès à l'atelier
-                pthread_mutex_lock(&mutex[params->idAtelier]);
-                // Mise en attente de l'atelier
-                pthread_cond_wait(&conditions[params->idAtelier], &mutex[params->idAtelier]);
+            // Enlever le conteneur vide de l'atelier
+            // free(&params->conteneur[indexConteneur]);
 
-                pthread_mutex_unlock(&mutex[params->idAtelier]);
-            }
-
-            // Prendre un nouveau conteneur correspondant à l'atelier d'après
-            pthread_mutex_lock(&mutexAireCollecte);
-            int indexConteneurPleinAPrendre = sizeof(aireDeCollecte.conteneursPlein[typeComposant]) - 1;
-            params->conteneur[i] = aireDeCollecte.conteneursPlein[typeComposant][indexConteneurPleinAPrendre];
-            // Enlever ce conteneur de l'aire de collecte
-            aireDeCollecte.conteneursPlein[typeComposant][indexConteneurPleinAPrendre] = NULL;
-            pthread_mutex_unlock(&mutexAireCollecte);
+            // Prendre un nouveau conteneur correspondant a typeComposant
+            prendreConteneurPleinAireDeCollecte(params, typeComposant, i);
 
             // Prendre le nombre de composant restant nécessaire à la production
-            params->conteneur[i]->qte -= qtyRestante;
+            params->conteneur[i].qte -= qtyRestante;
 
             // Prévenier l'homme-flux
-            envoiCarteMagnetique(params->conteneur[i]);
+            envoiCarteMagnetique(&params->conteneur[i]);
         }
     }
 }
 
 void envoiCarteMagnetique(struct Conteneur *arg)
 {
-    if (&arg->carte != NULL)
+    if (&arg->cartePresente != 0)
     {
         // Modifie le type du message envoyé (doit être différent de 0)
-        arg->carte->type = 1;
+        arg->carte.type = 1;
 
         // Envoyer la carte magnétique dans la file de message de l'homme flux
-        if (msgsnd(msgid, &arg->carte, sizeof(arg->carte), 0) == -1)
+        if (msgsnd(msgid, &arg->carte, sizeof(arg->carte) - sizeof(long), 0) == -1)
         {
-            perror("CHECK COMPOSANTS : Erreur envoi requete à l'homme-flux \n");
+            fprintf(stderr, "CHECK COMPOSANTS : Erreur envoi requete à l'homme-flux \n");
             exit(1);
         }
         // On efface la carte magnétique du conteneur
-        arg->carte = NULL;
+        arg->cartePresente = 0;
+        // free(&arg->carte);
     }
 }
 
@@ -230,15 +287,15 @@ void status_atelier_full(struct ParamAtelier *pa)
             printf("     %d   | %d  \n", pa->ressources[i][0], pa->ressources[i][1]);
         }
     }
-    if (pa->nbConteneurs > 0)
+    if (pa->initConteneurs > 0)
     {
         // Affiche la liste des conteneuers actuellement dans l'atelier
         printf("Conteneurs dans l'atelier :\n");
         printf("   TypeR | Qty \n");
 
-        for (int i = 0; i < pa->nbConteneurs; i++)
+        for (int i = 0; i < pa->nbRessources; i++)
         {
-            printf("     %d   |  %d  \n", pa->conteneur[i]->carte->idAtelierFournisseur, pa->conteneur[i]->qte);
+            printf("     %d   |  %d  \n", pa->conteneur[i].carte.idAtelierFournisseur, pa->conteneur[i].qte);
         }
     }
 
@@ -248,18 +305,19 @@ void status_atelier_full(struct ParamAtelier *pa)
 void status_atelier_short(struct ParamAtelier *pa)
 {
     printf("####### ATELIER %s #######\n", pa->nomAtelier);
+    printf("Id de l'atelier : %d\n", pa->idAtelier);
     printf("Temps de production : %d sec\n", pa->tpsProd);
     printf("Qty de pièces produites/boucle : %d\n", pa->qtyPieceParConteneur);
     printf("=> Nb pièces à produire : %d\n", statusAteliers[pa->idAtelier]);
 
-    if (pa->nbConteneurs > 0)
+    if (pa->initConteneurs > 0)
     {
         // Affiche la liste des conteneuers actuellement dans l'atelier
         printf("Conteneurs dans l'atelier :\n");
         printf("   TypeR | Qty \n");
-        for (int i = 0; i < pa->nbConteneurs; i++)
+        for (int i = 0; i < pa->nbRessources; i++)
         {
-            printf("     %d   |  %d  \n", pa->conteneur[i]->carte->idAtelierFournisseur, pa->conteneur[i]->qte);
+            printf("     %d   |  %d  \n", pa->conteneur[i].carte.idAtelierFournisseur, pa->conteneur[i].qte);
         }
     }
 
@@ -280,6 +338,22 @@ void status_factory_full()
     {
         status_atelier_full(params_ateliers[i]);
     }
+}
+
+void status_aire_de_collecte()
+{
+    printf("####### AIRE DE COLLECTE #######\n");
+    for (int i = 0; i < param_factory->nbAteliers; i++)
+    {
+        printf("# Atelier %d\n", i);
+        for (int j = 0; j < aireDeCollecte.nbConteneurPleinParAtelier[i]; j++)
+        {
+            printf("  Conteneur %d : ", j);
+            printf("%s, %d", aireDeCollecte.conteneursPlein[i][j].carte.nomPiece, aireDeCollecte.conteneursPlein[i][j].qte);
+            printf("\n");
+        }
+    }
+    printf("################################\n");
 }
 
 void init_factory(struct ParamFactory *pf, struct ParamAtelier **pas)
@@ -312,18 +386,20 @@ void init_factory(struct ParamFactory *pf, struct ParamAtelier **pas)
     // Initialisation aire de collecte
     aireDeCollecte.nbConteneurVideActuel = param_factory->nbConteneursVide;
     // Initialisation des listes des conteneurs plein
-    aireDeCollecte.conteneursPlein = malloc(param_factory->nbAteliers * sizeof(struct Conteneur **));
+    aireDeCollecte.conteneursPlein = malloc(param_factory->nbAteliers * sizeof(struct Conteneur *));
+    // et des nombres de conteneurs plein
+    aireDeCollecte.nbConteneurPleinParAtelier = malloc(param_factory->nbAteliers * sizeof(int));
 
     // Initialisation des listes des conteneurs vide
-    aireDeCollecte.conteneursVide = malloc(aireDeCollecte.nbConteneurVideActuel * sizeof(struct Conteneur *));
+    aireDeCollecte.conteneursVide = malloc(aireDeCollecte.nbConteneurVideActuel * sizeof(struct Conteneur));
 
     // Création des conteneurs vides
     for (int i = 0; i < aireDeCollecte.nbConteneurVideActuel; i++)
     {
         struct Conteneur c;
-        c.carte = NULL;
-        c.qte = i;
-        aireDeCollecte.conteneursVide[i] = &c;
+        c.cartePresente = 0;
+        c.qte = 0;
+        memcpy(&aireDeCollecte.conteneursVide[i], &c, sizeof(struct Conteneur));
     }
 
     // Initialisation des ateliers
@@ -333,23 +409,21 @@ void init_factory(struct ParamFactory *pf, struct ParamAtelier **pas)
         params_ateliers[i]->idAtelier = auto_idAtelier;
         // Incrémentation du numéro d'atelier, pour le suivant
         auto_idAtelier++;
-        printf("# Initialisation ATELIER %d...", params_ateliers[i]->idAtelier);
+        fprintf(stderr, "# Initialisation ATELIER %d...", params_ateliers[i]->idAtelier);
 
-        if (params_ateliers[i]->nbConteneurs > 0)
+        if (params_ateliers[i]->nbRessources > 0)
         {
             // Création du tableaux de conteneurs de l'atelier
-            params_ateliers[i]->conteneur = malloc(params_ateliers[i]->nbConteneurs * sizeof(struct Conteneur *));
-            // Remise à zéro du nombre de conteneur
-            // car les ateliers sont initialisés sans conteneur
-            params_ateliers[i]->nbConteneurs = 0;
+            params_ateliers[i]->conteneur = malloc(params_ateliers[i]->nbRessources * sizeof(struct Conteneur));
         }
-        else
-        {
-            params_ateliers[i]->conteneur = NULL;
-        }
+        // Mise à zéro du nombre de conteneur
+        // car les ateliers sont initialisés sans conteneur
+        params_ateliers[i]->initConteneurs = 0;
 
         // Création de son aire de conteneur plein
-        aireDeCollecte.conteneursPlein[i] = malloc(param_factory->nbConteneursParClient * sizeof(struct Conteneur *));
+        aireDeCollecte.conteneursPlein[i] = malloc(param_factory->nbConteneursParClient * sizeof(struct Conteneur));
+        // Nombre de conteneur plein pour chaque atelier = nbConteneursParClient
+        aireDeCollecte.nbConteneurPleinParAtelier[i] = param_factory->nbConteneursParClient;
 
         // Création de param_factory->nbConteneursParClient conteneurs plein pour cet atelier par client
         for (int j = 0; j < param_factory->nbConteneursParClient; j++)
@@ -363,28 +437,29 @@ void init_factory(struct ParamFactory *pf, struct ParamAtelier **pas)
             // Création du conteneur
             // Attache de la carte magnétique
             struct Conteneur c;
-            c.carte = &cm;
-            c.qte = cm.qtyMax;
+            c.cartePresente = 1;
+            memcpy(&c.carte, &cm, sizeof(struct CarteMagnetique));
+            c.qte = c.carte.qtyMax;
 
             // Stockage du conteneur
-            aireDeCollecte.conteneursPlein[i][j] = &c;
+            memcpy(&aireDeCollecte.conteneursPlein[i][j], &c, sizeof(struct Conteneur));
         }
-        printf("Ok\n");
+        fprintf(stderr, "Ok\n");
 
-        printf("  Création du THREAD.........");
+        fprintf(stderr, "  Création du THREAD.........");
         // Création du thread atelier
         if (pthread_create(&tid[params_ateliers[i]->idAtelier], NULL, atelier_job, (void *)params_ateliers[i]) < 0)
         {
-            fprintf(stderr, "Erreur\n");
+            fprintf(stderr, "ERREUR création thread atelier %d\n", params_ateliers[i]->idAtelier);
             exit(1);
         }
-        printf("Ok\n");
+        fprintf(stderr, "Ok\n");
     }
 
     // Création de l'homme-flux
     if (pthread_create(&homme_flux_tid, NULL, homme_flux, NULL) < 0)
     {
-        fprintf(stderr, "Erreur création thread homme-flux\n");
+        fprintf(stderr, "ERREUR création thread homme-flux\n");
         exit(1);
     }
 }
@@ -392,13 +467,13 @@ void init_factory(struct ParamFactory *pf, struct ParamAtelier **pas)
 void clear_factory()
 {
     // Termine les threads ateliers
-    // pthread_joint()
+    // pthread_join()
 
     // Suppression de l"homme flux
 
     // Supprime la file de message de l'homme-flux
     msgctl(msgid, IPC_RMID, NULL);
-    printf("## File de message de l'homme-flux %d supprimée\n", msgid);
+    fprintf(stderr, "## File de message de l'homme-flux %d supprimée\n", msgid);
 
     // Suppression de toutes les allocations
 }

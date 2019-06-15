@@ -9,6 +9,9 @@
 
 #include "custom_types.h"
 
+FILE *status;
+FILE *messages;
+
 int auto_idAtelier = 0; // ID atelier => auto incrémenté à la création d'un atelier
 
 pthread_t *tid;           // Tableau des threads : un par atelier
@@ -31,7 +34,7 @@ int msgid; // Id de la file de message de l'homme-flux
 // Aire de collecte (où se trouve les conteneurs plein et vide)
 struct AireDeCollecte aireDeCollecte;
 
-struct CarteMagnetique *carteCourante;
+struct CarteMagnetique carteCourante;
 
 // Liste des paramètres atelier
 struct ParamAtelier **params_ateliers;
@@ -52,3 +55,4 @@ void status_atelier_full(struct ParamAtelier *);
 void status_atelier_short(struct ParamAtelier *);
 void status_factory_short();
 void status_factory_full();
+void status_aire_de_collecte();
