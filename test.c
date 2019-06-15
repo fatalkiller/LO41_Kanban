@@ -69,8 +69,8 @@ int main()
     // pa3.idAtelier = 3;
     pa3.nomAtelier = malloc(sizeof("Tissus") * sizeof(char));
     strcpy(pa3.nomAtelier, "Tissus");
-    pa3.tpsProd = 10;
-    pa3.qtyPieceParConteneur = 12;
+    pa3.tpsProd = 12;
+    pa3.qtyPieceParConteneur = 15;
     pa3.nbRessources = 1;
     pa3.ressources = malloc(pa3.nbRessources * sizeof(int *));
     pa3.ressources[0] = malloc(2 * sizeof(int));
@@ -82,11 +82,11 @@ int main()
     // pa3.nbConteneurs = mon_usine.nbConteneursParClient;
     pas[3] = &pa3;
 
-    printf("########## Init param ateliers des tests OK ###############\n");
+    fprintf(stderr, "########## Init param ateliers des tests OK ###############\n");
 
     init_factory(&mon_usine, pas);
 
-    printf("########## Init factory OK##################################\n");
+    fprintf(stderr, "########## Init factory OK##################################\n");
 
     status_factory_full();
     status_aire_de_collecte();
