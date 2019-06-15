@@ -1,23 +1,21 @@
 #include "atelier.h"
 
+/*
+    Création de la file de message 
+    Correspond à la boite aux letttres de l'homme-flux
+ */
 void init_boite_aux_lettres()
 {
-    key_t key; /* valeur de retour de la creation de la clé */
+    key_t key;
 
-    /****************************************************************/
-    /*  Creation de la clé IPC 					*/
-    /*  key_t ftok(const char *pathname, int proj_id);              */
-    /****************************************************************/
+    // Création de la clé
     if ((key = ftok("/tmp", 'a')) == -1)
     {
         fprintf(stderr, "ERREUR de creation de la clé de la boite aux lettres\n");
         exit(1);
     }
 
-    /****************************************************************/
-    /* Creation de la file de message 				*/
-    /* int msgget(key_t key, int msgflg);				*/
-    /****************************************************************/
+    // Création file de message
     if ((msgid = msgget(key, IPC_CREAT | 0600)) == -1)
     {
         fprintf(stderr, "ERREUR de creation de la boite aux lettres\n");
@@ -25,13 +23,17 @@ void init_boite_aux_lettres()
     }
 }
 
+/*
+    Fonction executée par le thread de l'homme-flux
+ */
 void *homme_flux()
 {
+    // Code de retour de la reception de message
     int msg;
 
     while (1)
     {
-        fprintf(stderr, "# HOMME FLUX EN ATTENTE DE MESSAGE\n");
+        fprintf(stderr, "# HOMME-FLUX : En attente de message\n");
         // Attente d'une carte magnétique d'un atelier
         if ((msg = msgrcv(msgid, &carteCourante, sizeof(struct CarteMagnetique) - sizeof(long), 0, 0)) == -1)
         {
@@ -53,12 +55,25 @@ void *homme_flux()
     }
 }
 
+/*
+    Fonction executée par le client 
+    qui veut passer des commandes de pièces
+ */
 void client_job(struct ParamAtelier params)
 {
     fprintf(stderr, "== Client envoie une commande de type %d, qty %d\n", params.ressources[0][0], params.ressources[0][1]);
     checkComposants(&params);
 }
 
+/*
+    Fonction executée par les threads ateliers
+    - Se mets en attente de commande
+    - Dès la reception d'un ordre de commande de l'homme-flux, 
+      l'atelier se mets à produire
+      Il vérifie l'accessibilité des ressources dont il a besoin 
+      puis produit
+    void *arg : ParamAtelier : structure des paramètres de l'atelier
+ */
 void *atelier_job(void *arg)
 {
     struct ParamAtelier *params = (struct ParamAtelier *)arg;
@@ -97,6 +112,10 @@ void *atelier_job(void *arg)
     }
 }
 
+/*
+    Fonction de production 
+    struct ParamAtelier *params : structure des paramètres de l'atelier
+ */
 void produire(struct ParamAtelier *params)
 {
     // Cherche un conteneur vide
@@ -144,8 +163,13 @@ void produire(struct ParamAtelier *params)
     }
 }
 
-// Aller chercher un conteneur dans l'aire de collecte de type typeComposant
-// Si pas de conteneur dispo, mise en attente de l'atelier
+/*
+    Cherche un conteneur dans l'aire de collecte
+    Si pas de conteneur dispo, mise en attente de l'atelier
+      struct ParamAtelier *params : structure des paramètres de l'atelier
+      int typeComposant : Type de composant du conteneur à chercher
+      int indexConteneur : Index dans lequel placé le conteneur dans la liste des conteneurs de l'atelier
+*/
 void prendreConteneurPleinAireDeCollecte(struct ParamAtelier *params, int typeComposant, int indexConteneur)
 {
     fprintf(stderr, "## Atelier %s prend un conteneur %d dans l'aire de collecte\n", params->nomAtelier, typeComposant);
@@ -170,12 +194,15 @@ void prendreConteneurPleinAireDeCollecte(struct ParamAtelier *params, int typeCo
     memcpy(&params->conteneur[indexConteneur],
            &aireDeCollecte.conteneursPlein[typeComposant][indexConteneurPleinAPrendre], sizeof(struct Conteneur));
 
-    // Enlever ce conteneur de l'aire de collecte
-    // free(&aireDeCollecte.conteneursPlein[typeComposant][indexConteneurPleinAPrendre]);
-
     pthread_mutex_unlock(&mutexAireCollecte);
 }
 
+/*
+    - Vérifie les ressources demandées par l'atelier en amont
+    - Cherche les conteneurs plein de composants dans l'aire de collecte si besoin
+    - Déduis les ressources necéssaires des conteneurs de l'atelier
+        struct ParamAtelier *params : structure des paramètres de l'atelier
+ */
 void checkComposants(struct ParamAtelier *params)
 {
     // Si l'atelier n'a pas encore de conteneurs plein (juste après l'initialisation de ceux-ci)
@@ -242,6 +269,11 @@ void checkComposants(struct ParamAtelier *params)
     }
 }
 
+/*
+    Détache la carte du conteneur passé en paramètre
+    puis l'envoi à l'homme-flux dans sa boite aux lettres
+      struct Conteneur *arg : Pointeur vers un conteneur
+ */
 void envoiCarteMagnetique(struct Conteneur *arg)
 {
     if (&arg->cartePresente != 0)
@@ -261,6 +293,10 @@ void envoiCarteMagnetique(struct Conteneur *arg)
     }
 }
 
+/*
+    Affiche le statut étendu de l'atelier passé en paramètre
+        struct ParamAtelier *params : structure des paramètres de l'atelier
+ */
 void status_atelier_full(struct ParamAtelier *pa)
 {
     printf("####### ATELIER %s #######\n", pa->nomAtelier);
@@ -305,6 +341,10 @@ void status_atelier_full(struct ParamAtelier *pa)
     printf("##########################\n");
 }
 
+/*
+    Affiche le statut réduit de l'atelier passé en paramètre
+        struct ParamAtelier *params : structure des paramètres de l'atelier
+ */
 void status_atelier_short(struct ParamAtelier *pa)
 {
     printf("####### ATELIER %s #######\n", pa->nomAtelier);
@@ -327,25 +367,40 @@ void status_atelier_short(struct ParamAtelier *pa)
     printf("##########################\n");
 }
 
+/*
+    Affiche le statut réduit de l'usine
+    (statut de tous les ateliers + aire de collecte)
+ */
 void status_factory_short()
 {
     for (int i = 0; i < param_factory->nbAteliers; i++)
     {
         status_atelier_short(params_ateliers[i]);
     }
+    status_aire_de_collecte();
 }
 
+/*
+    Affiche le statut étendu de l'usine
+    (statut de tous les ateliers + aire de collecte)
+ */
 void status_factory_full()
 {
     for (int i = 0; i < param_factory->nbAteliers; i++)
     {
         status_atelier_full(params_ateliers[i]);
     }
+    status_aire_de_collecte();
 }
 
+/*
+    Affiche le statut de l'aire de collecte 
+    en affichant les conteneurs plein de tous les ateliers
+ */
 void status_aire_de_collecte()
 {
     printf("####### AIRE DE COLLECTE #######\n");
+    printf("Nombre de conteneurs vide : %d", aireDeCollecte.nbConteneurVideActuel);
     for (int i = 0; i < param_factory->nbAteliers; i++)
     {
         printf("# Atelier %d\n", i);
@@ -359,6 +414,19 @@ void status_aire_de_collecte()
     printf("################################\n");
 }
 
+/*
+    Initialisation de l'usine
+      struct ParamFactory *pf : Pointeur vers les paramètres de l'usine
+      struct ParamAtelier **pas : Tableau de paramètres des différents ateliers
+
+    - Création des mutex
+    - Création des conditions
+    - Création des status des ateliers
+    - Création de la boite aux lettres
+    - Création de l'aire de collecte (conteneurs vide + conteneurs pleins)
+    - Création des threads atelier
+    - Création de l'homme-flux
+ */
 void init_factory(struct ParamFactory *pf, struct ParamAtelier **pas)
 {
     // Configure le signal SIGINT (Ctrl-C) pour nettoyer l'usine
@@ -467,6 +535,13 @@ void init_factory(struct ParamFactory *pf, struct ParamAtelier **pas)
     }
 }
 
+/*
+    Nettoyage de l'usine 
+    - Free toutes les zones mémoires allouées
+    - Suppression du tableau de thread
+    - Suppression de l'aire de collecte
+    - Suppression de la file de message (boite aux lettres)
+ */
 void clear_factory()
 {
     // Supprime la file de message de l'homme-flux
@@ -474,8 +549,29 @@ void clear_factory()
     fprintf(stderr, "## File de message de l'homme-flux %d supprimée\n", msgid);
 
     // Suppression de toutes les allocations
+    fprintf(stderr, "# Libération de toutes les ressources allouées...");
+    free(tid);
+    free(mutex);
+    free(conditions);
+    free(statusAteliers);
+    for (int i = 0; i < param_factory->nbAteliers; i++)
+    {
+        free(params_ateliers[i]->conteneur);
+        free(aireDeCollecte.conteneursPlein[i]);
+    }
+
+    free(aireDeCollecte.conteneursPlein);
+    free(aireDeCollecte.nbConteneurPleinParAtelier);
+
+    free(params_ateliers);
+    free(param_factory);
+    fprintf(stderr, "Ok\n");
 }
 
+/*
+    Appel de la fonction de nettoyage mémoire de l'usine 
+    à la reception du signal de Ctrl+c
+ */
 void traitantSIGINT()
 {
     clear_factory();
