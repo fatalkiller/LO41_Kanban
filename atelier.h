@@ -43,8 +43,10 @@ struct ParamFactory *param_factory;
 void init_boite_aux_lettres();
 void *homme_flux();
 void *atelier_job(void *);
+void client_job(struct ParamAtelier params);
 void produire(struct ParamAtelier *);
 void checkComposants(struct ParamAtelier *);
+void prendreConteneurPleinAireDeCollecte(struct ParamAtelier *params, int typeComposant, int indexConteneur);
 void envoiCarteMagnetique(struct Conteneur *);
 void init_factory(struct ParamFactory *, struct ParamAtelier **);
 

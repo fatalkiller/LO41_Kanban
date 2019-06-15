@@ -53,10 +53,16 @@ void *homme_flux()
     }
 }
 
+void client_job(struct ParamAtelier params)
+{
+    fprintf(stderr, "== Client envoie une commande de type %d, qty %d\n", params.ressources[0][0], params.ressources[0][1]);
+    checkComposants(&params);
+}
+
 void *atelier_job(void *arg)
 {
     struct ParamAtelier *params = (struct ParamAtelier *)arg;
-    sleep(3);
+    sleep(1);
 
     while (1)
     {
@@ -85,11 +91,8 @@ void *atelier_job(void *arg)
         produire(params);
 
         // On a produit un composant
-        printf("======= STATUS atelier %d = %d BEFORE LOCK\n", params->idAtelier, statusAteliers[params->idAtelier]);
         pthread_mutex_lock(&mutexStatus);
-        printf("======= STATUS atelier %d = %d AVANT\n", params->idAtelier, statusAteliers[params->idAtelier]);
         statusAteliers[params->idAtelier]--;
-        printf("======= STATUS atelier %d = %d APRES\n", params->idAtelier, statusAteliers[params->idAtelier]);
         pthread_mutex_unlock(&mutexStatus);
     }
 }
@@ -102,7 +105,7 @@ void produire(struct ParamAtelier *params)
 
     // On l'enlève de l'aire de collecte
     aireDeCollecte.nbConteneurVideActuel--;
-    memcpy(&aireDeCollecte.conteneursVide[aireDeCollecte.nbConteneurVideActuel], &contEnProduction, sizeof(struct Conteneur));
+    memcpy(&contEnProduction, &aireDeCollecte.conteneursVide[aireDeCollecte.nbConteneurVideActuel], sizeof(struct Conteneur));
     // free(&aireDeCollecte.conteneursVide[aireDeCollecte.nbConteneurVideActuel]);
 
     pthread_mutex_unlock(&mutexAireCollecte);
@@ -135,7 +138,7 @@ void produire(struct ParamAtelier *params)
         // Vérouille l'accès à l'atelier
         pthread_mutex_lock(&mutex[params->clients[i]]);
         // Mise en attente de l'atelier
-        pthread_cond_wait(&conditions[params->clients[i]], &mutex[params->clients[i]]);
+        pthread_cond_signal(&conditions[params->clients[i]]);
         // Dévérouille l'accès à l'atelier
         pthread_mutex_unlock(&mutex[params->clients[i]]);
     }
@@ -369,9 +372,9 @@ void init_factory(struct ParamFactory *pf, struct ParamAtelier **pas)
     // Init tableau des threads : un par atelier
     tid = malloc(param_factory->nbAteliers * sizeof(pthread_t));
     // Init tableau des mutexs pour chaque atelier
-    mutex = malloc(param_factory->nbAteliers * sizeof(pthread_mutex_t));
+    mutex = malloc((param_factory->nbAteliers + 1) * sizeof(pthread_mutex_t));
     // Init tableau de conditions : une par atelier
-    conditions = malloc(param_factory->nbAteliers * sizeof(pthread_cond_t));
+    conditions = malloc((param_factory->nbAteliers + 1) * sizeof(pthread_cond_t));
     /*
         Init status des ateliers
         n = Nb d'élements à produire
@@ -466,11 +469,6 @@ void init_factory(struct ParamFactory *pf, struct ParamAtelier **pas)
 
 void clear_factory()
 {
-    // Termine les threads ateliers
-    // pthread_join()
-
-    // Suppression de l"homme flux
-
     // Supprime la file de message de l'homme-flux
     msgctl(msgid, IPC_RMID, NULL);
     fprintf(stderr, "## File de message de l'homme-flux %d supprimée\n", msgid);
