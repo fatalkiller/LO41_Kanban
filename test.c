@@ -70,7 +70,7 @@ int main()
     pa3.nomAtelier = malloc(sizeof("Tissus") * sizeof(char));
     strcpy(pa3.nomAtelier, "Tissus");
     pa3.tpsProd = 10;
-    pa3.qtyPieceParConteneur = 10;
+    pa3.qtyPieceParConteneur = 12;
     pa3.nbRessources = 1;
     pa3.ressources = malloc(pa3.nbRessources * sizeof(int *));
     pa3.ressources[0] = malloc(2 * sizeof(int));
@@ -78,7 +78,7 @@ int main()
     pa3.ressources[0][1] = 15; // Quantité de ressource
     pa3.nbClients = 1;
     pa3.clients = malloc(pa3.nbClients * sizeof(int));
-    pa3.clients[0] = -1;
+    pa3.clients[0] = mon_usine.nbAteliers; // id de l'atelier client
     // pa3.nbConteneurs = mon_usine.nbConteneursParClient;
     pas[3] = &pa3;
 
@@ -96,10 +96,21 @@ int main()
 
     // Lancement d'une commande d'un composant
     int idAtelierCommande = 3;
-    statusAteliers[idAtelierCommande] = 1;
-    pthread_mutex_lock(&mutex[params_ateliers[idAtelierCommande]->idAtelier]);
-    pthread_cond_signal(&conditions[params_ateliers[idAtelierCommande]->idAtelier]);
-    pthread_mutex_unlock(&mutex[params_ateliers[idAtelierCommande]->idAtelier]);
+    int qtyCommande = 5;
+
+    struct ParamAtelier paClient;
+    paClient.nomAtelier = malloc(sizeof("Client") * sizeof(char));
+    strcpy(paClient.nomAtelier, "Client");
+    paClient.initConteneurs = 0;
+    paClient.nbRessources = 1;
+    paClient.nbClients = 0;
+    paClient.ressources = malloc(pa3.nbRessources * sizeof(int *));
+    paClient.ressources[0] = malloc(2 * sizeof(int));
+    paClient.ressources[0][0] = idAtelierCommande; // Type de ressource
+    paClient.ressources[0][1] = qtyCommande;       // Quantité de ressource
+    paClient.conteneur = malloc(paClient.nbRessources * sizeof(struct Conteneur));
+
+    client_job(paClient);
 
     while (1)
     {
