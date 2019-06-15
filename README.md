@@ -1,41 +1,12 @@
 # LO41_Kanban
 
-#### Projet
+> -   Pour compiler le jeu de test :
+>     -   gcc test.c -pthread -o jeu_de_test
 
-> Il faut pouvoir choisir :
->
-> -   le nombre d'atelier de productions
->     ex: prod sièges, armature, roues...
->
-> -   le nombre de composant pour fabriquer une pièces (= nb de tour de boucle)
->     ex : pour fabriquer du tissus, il me faut 10x fils
->
-> -   choisir la profondeur de chaque prod (combien de composants différents nécessaires)
+> -   Pour compiler (developpeur)
+>     -   gcc test.c -pthread -Wall -Wextra -Werror
 
-#### Rapport
-
-> -   Doit contenir les étapes de conceptions, pk avoir choisi des threads, des mutex...
-> -   Doit contenir un diagramme réseau de petri
-
-### Demande utilisateur :
-
-> -   Nombre de conteneur maximum
-> -   Nombre de chaine
->     -   Nombre d'atelier pour cette chaine
->     -   Nombre de composant nécessaire pour chaque atelier
->     -   Temps de production
-
-> Atelier 0 : tout à gauche de la chaine, ..., Atelier n : dernier de la chaine = produit fini
-
-### Tâches à faire
-
-> -   Menu utilisateur
->     -   Création de n ateliers
->     -   Demande du nombre de composants par atelier
->     -   Demande temps de production
-
-> -   Fonction d'affichage des statistiques
-
-### COMPILE CMD
-
-gcc test.c -pthread -Wall -Wextra -Werror
+> -   Pour lancer le jeu de test :
+>     -   Lancer 2 terminaux : sur le 2eme terminal faire la commande : tty
+>     -   Récupérer ce tty du genre "/dev/pts/X"
+>     -   Puis lancer le jeu avec la commande suivante : ./jeu_de_test 2>/dev/pts/X
