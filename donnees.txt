@@ -1,0 +1,20 @@
+4 8 2
+Fibre 5 40 0
+FibreColor 10 30 1 Fibre 30
+Fil 7 20 1 FibreColor 20
+Tissus 12 15 1 Fil 15
+
+
+---
+
+Les données doivent être de la forme :
+Nombre_d'atelier Nombre_de_conteneur_par_client Nombre_de_conteneur_vide
+Nom_atelier_1 temps_de_production quantité_de_piece_par_conteneur nombre_de_fournisseur nom_fournisseur_1 nom_fournisseur_2
+....
+
+---
+
+Exemple :
+2 2 2
+Atelier1 2 3 1 Atelier2 3
+Atelier2 2 2 0
