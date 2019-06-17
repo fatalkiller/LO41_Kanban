@@ -116,9 +116,13 @@ int main()
     {
         system("clear");
         status_factory_short();
-        status_aire_de_collecte();
+        // status_aire_de_collecte();
         sleep(1);
     }
+
+    // Affiche le conteneur du client
+    printf("==== CONTENEUR CLIENT : Type | Qty\n");
+    printf("                         %s |  %d", pa3.nomAtelier, paClient.conteneur[0].qte);
 
     for (int i = 0; i < mon_usine.nbAteliers; i++)
     {
