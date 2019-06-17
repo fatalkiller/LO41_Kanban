@@ -89,7 +89,6 @@ int main()
     fprintf(stderr, "########## Init factory OK##################################\n");
 
     status_factory_full();
-    status_aire_de_collecte();
 
     // Attendre fin de l'initialisation
     sleep(5);
@@ -116,19 +115,18 @@ int main()
     {
         system("clear");
         status_factory_short();
-        // status_aire_de_collecte();
         sleep(1);
     }
-
-    // Affiche le conteneur du client
-    printf("==== CONTENEUR CLIENT : Type | Qty\n");
-    printf("                         %s |  %d", pa3.nomAtelier, paClient.conteneur[0].qte);
 
     for (int i = 0; i < mon_usine.nbAteliers; i++)
     {
         pthread_join(tid[i], NULL);
     }
     pthread_join(homme_flux_tid, NULL);
+
+    // Affiche le conteneur du client
+    // printf("==== CONTENEUR CLIENT : Type | Qty\n");
+    // printf("                         %s |  %d", pa3.nomAtelier, paClient.conteneur[0].qte);
 
     return 0;
 }
