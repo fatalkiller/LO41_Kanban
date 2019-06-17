@@ -3,6 +3,13 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+int affichage = 1;
+
+void stopAffichage()
+{
+    affichage = 0;
+}
+
 int main()
 {
 
@@ -144,19 +151,30 @@ int main()
 
     /// --- Boucle principale du programme permettant à l'utilisateur de faire certaines actions ---
 
+    signal(SIGINT, stopAffichage);
+
     int choix = 0;
-    int quantiteComposantVoulut = 0;
+    int qtyVoulue = 0;
     while (1)
     {
         printf("Veuillez saisir une action parmit les suivantes :  \n  1 -> Demande du composant principal \n  2 -> Affichage de la factory \n  3 -> Arréter la factory \n");
         scanf("%d", &choix);
         if (choix == 1)
         {
-            printf("Veuillez saisir la quantité de composant voulut : \n");
-            scanf("%d", &quantiteComposantVoulut);
-            paClient.ressources[0][1] = quantiteComposantVoulut;
+            printf("Veuillez saisir la quantité de composant voulue : \n");
+            scanf("%d", &qtyVoulue);
+            paClient.ressources[0][1] = qtyVoulue;
             client_job(paClient);
-            printf("Le client a bien reçut %d composants \n", quantiteComposantVoulut);
+
+            while (affichage == 1)
+            {
+                system("clear");
+                status_factory_short();
+                printf("== APPUYER SUR CTRL+C POUR INTERROMPRE L'AFFICHAGE ==\n");
+                sleep(1);
+            }
+            affichage = 1;
+            printf("=== Le client a bien reçut %d composants \n", qtyVoulue);
         }
         else if (choix == 2)
         {
