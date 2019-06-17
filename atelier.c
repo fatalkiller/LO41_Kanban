@@ -119,15 +119,7 @@ void *atelier_job(void *arg)
 void produire(struct ParamAtelier *params)
 {
     // Cherche un conteneur vide
-    pthread_mutex_lock(&mutexAireCollecte);
-    struct Conteneur contEnProduction;
-
-    // On l'enlève de l'aire de collecte
-    aireDeCollecte.nbConteneurVideActuel--;
-    memcpy(&contEnProduction, &aireDeCollecte.conteneursVide[aireDeCollecte.nbConteneurVideActuel], sizeof(struct Conteneur));
-    // free(&aireDeCollecte.conteneursVide[aireDeCollecte.nbConteneurVideActuel]);
-
-    pthread_mutex_unlock(&mutexAireCollecte);
+    struct Conteneur contEnProduction = prendreConteneurVideAireDeCollecte(params);
 
     // On attache la carte de l'homme-flux
     contEnProduction.cartePresente = 1;
@@ -172,7 +164,6 @@ void produire(struct ParamAtelier *params)
 */
 void prendreConteneurPleinAireDeCollecte(struct ParamAtelier *params, int typeComposant, int indexConteneur)
 {
-    fprintf(stderr, "## Atelier %s prend un conteneur %d dans l'aire de collecte\n", params->nomAtelier, typeComposant);
     // Tant qu'il n'y a pas de conteneur contenant le matériaux voulu
     while (aireDeCollecte.nbConteneurPleinParAtelier[typeComposant] == 0)
     {
@@ -184,6 +175,7 @@ void prendreConteneurPleinAireDeCollecte(struct ParamAtelier *params, int typeCo
         pthread_mutex_unlock(&mutex[params->idAtelier]);
     }
 
+    fprintf(stderr, "## Atelier %s prend un conteneur %d dans l'aire de collecte\n", params->nomAtelier, typeComposant);
     // Prendre un nouveau conteneur correspondant a typeComposant
     pthread_mutex_lock(&mutexAireCollecte);
 
@@ -195,6 +187,40 @@ void prendreConteneurPleinAireDeCollecte(struct ParamAtelier *params, int typeCo
            &aireDeCollecte.conteneursPlein[typeComposant][indexConteneurPleinAPrendre], sizeof(struct Conteneur));
 
     pthread_mutex_unlock(&mutexAireCollecte);
+}
+
+/*
+    Cherche un conteneur vide dans l'aire de collecte
+    Si pas de conteneur dispo, mise en attente de l'atelier
+      struct ParamAtelier *params : structure des paramètres de l'atelier
+*/
+struct Conteneur prendreConteneurVideAireDeCollecte(struct ParamAtelier *params)
+{
+    // Cherche un conteneur vide
+    struct Conteneur contVide;
+    pthread_mutex_lock(&mutexAireCollecte);
+
+    // Vérifier si un conteneur vide est dispo
+    while (aireDeCollecte.nbConteneurVideActuel == 0)
+    {
+        // Mise en attente de l'atelier d'un conteneur vide
+        pthread_mutex_unlock(&mutexAireCollecte);
+
+        // Vérouille l'accès à l'atelier
+        pthread_mutex_lock(&mutex[params->idAtelier]);
+        // Mise en attente de l'atelier
+        pthread_cond_wait(&conditions[params->idAtelier], &mutex[params->idAtelier]);
+
+        pthread_mutex_unlock(&mutex[params->idAtelier]);
+    }
+
+    // On l'enlève de l'aire de collecte
+    aireDeCollecte.nbConteneurVideActuel--;
+    memcpy(&contVide, &aireDeCollecte.conteneursVide[aireDeCollecte.nbConteneurVideActuel], sizeof(struct Conteneur));
+
+    pthread_mutex_unlock(&mutexAireCollecte);
+
+    return contVide;
 }
 
 /*
@@ -254,8 +280,18 @@ void checkComposants(struct ParamAtelier *params)
 
             pthread_mutex_unlock(&mutexAireCollecte);
 
+            // Réveille tous les ateliers potentiellement en attente de conteneur vide
+            for (int i = 0; i < param_factory->nbAteliers; i++)
+            {
+                // Vérouille l'accès à l'atelier
+                pthread_mutex_lock(&mutex[params_ateliers[i]->idAtelier]);
+                // Mise en attente de l'atelier
+                pthread_cond_wait(&conditions[params_ateliers[i]->idAtelier], &mutex[params_ateliers[i]->idAtelier]);
+
+                pthread_mutex_unlock(&mutex[params_ateliers[i]->idAtelier]);
+            }
+
             // Enlever le conteneur vide de l'atelier
-            // free(&params->conteneur[indexConteneur]);
 
             // Prendre un nouveau conteneur correspondant a typeComposant
             prendreConteneurPleinAireDeCollecte(params, typeComposant, i);
@@ -400,7 +436,7 @@ void status_factory_full()
 void status_aire_de_collecte()
 {
     printf("####### AIRE DE COLLECTE #######\n");
-    printf("Nombre de conteneurs vide : %d", aireDeCollecte.nbConteneurVideActuel);
+    printf("Nombre de conteneurs vide : %d\n", aireDeCollecte.nbConteneurVideActuel);
     for (int i = 0; i < param_factory->nbAteliers; i++)
     {
         printf("# Atelier %d\n", i);

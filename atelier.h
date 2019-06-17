@@ -47,6 +47,7 @@ void client_job(struct ParamAtelier params);
 void produire(struct ParamAtelier *);
 void checkComposants(struct ParamAtelier *);
 void prendreConteneurPleinAireDeCollecte(struct ParamAtelier *params, int typeComposant, int indexConteneur);
+struct Conteneur prendreConteneurVideAireDeCollecte(struct ParamAtelier *params);
 void envoiCarteMagnetique(struct Conteneur *);
 void init_factory(struct ParamFactory *, struct ParamAtelier **);
 
