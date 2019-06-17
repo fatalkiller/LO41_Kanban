@@ -203,6 +203,7 @@ struct Conteneur prendreConteneurVideAireDeCollecte(struct ParamAtelier *params)
     // Vérifier si un conteneur vide est dispo
     while (aireDeCollecte.nbConteneurVideActuel == 0)
     {
+        fprintf(stderr, "## Atelier %s se mets en attente d'un conteneur vide\n", params->nomAtelier);
         // Mise en attente de l'atelier d'un conteneur vide
         pthread_mutex_unlock(&mutexAireCollecte);
 
@@ -286,7 +287,7 @@ void checkComposants(struct ParamAtelier *params)
                 // Vérouille l'accès à l'atelier
                 pthread_mutex_lock(&mutex[params_ateliers[i]->idAtelier]);
                 // Mise en attente de l'atelier
-                pthread_cond_wait(&conditions[params_ateliers[i]->idAtelier], &mutex[params_ateliers[i]->idAtelier]);
+                pthread_cond_signal(&conditions[params_ateliers[i]->idAtelier]);
 
                 pthread_mutex_unlock(&mutex[params_ateliers[i]->idAtelier]);
             }
@@ -466,7 +467,7 @@ void status_aire_de_collecte()
 void init_factory(struct ParamFactory *pf, struct ParamAtelier **pas)
 {
     // Configure le signal SIGINT (Ctrl-C) pour nettoyer l'usine
-    signal(SIGINT, traitantSIGINT);
+    signal(SIGTSTP, traitantSIGINT);
 
     // Stockage des paramètres de tous les ateliers
     params_ateliers = pas;
