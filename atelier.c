@@ -171,6 +171,17 @@ void produire(struct ParamAtelier *params)
         // Dévérouille l'accès à l'atelier
         pthread_mutex_unlock(&mutex[params->clients[i]]);
     }
+
+    // On révéille le client si c'est l'atelier a qui on a commandé
+    if (params->nbClients == 0)
+    {
+        // Vérouille l'accès à l'atelier
+        pthread_mutex_lock(&mutex[param_factory->nbAteliers]);
+        // Mise en attente de l'atelier
+        pthread_cond_signal(&conditions[param_factory->nbAteliers]);
+        // Dévérouille l'accès à l'atelier
+        pthread_mutex_unlock(&mutex[param_factory->nbAteliers]);
+    }
 }
 
 /*
