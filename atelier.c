@@ -72,10 +72,41 @@ void *homme_flux()
     Fonction executée par le client 
     qui veut passer des commandes de pièces
  */
-void client_job(struct ParamAtelier *params)
+void *client_job(void *arg)
 {
-    fprintf(stderr, "== Client envoie une commande de type %d, qty %d\n", params->ressources[0][0], params->ressources[0][1]);
-    checkComposants(params);
+    struct ParamAtelier *params = (struct ParamAtelier *)arg;
+
+    key_t key;
+
+    // Création de la clé
+    if ((key = ftok("/tmp", 'b')) == -1)
+    {
+        fprintf(stderr, "ERREUR de creation de la clé de la file de message client\n");
+        exit(1);
+    }
+
+    // Création file de message
+    if ((msgid_client = msgget(key, IPC_CREAT | 0600)) == -1)
+    {
+        fprintf(stderr, "ERREUR de creation de la file de message client\n");
+        exit(1);
+    }
+
+    int msg;
+    struct CommandeClient cc;
+    while (1)
+    {
+        if ((msg = msgrcv(msgid_client, &cc, sizeof(struct CommandeClient) - sizeof(long), 0, 0)) == -1)
+        {
+            fprintf(stderr, "CLIENT : Erreur de lecture message \n");
+            exit(1);
+        }
+        params->ressources[0][1] = cc.qtyCmd;
+
+        fprintf(stderr, "== Client envoie une commande de type %d, qty %d\n", params->ressources[0][0], params->ressources[0][1]);
+        checkComposants(params);
+        fprintf(stderr, "\n\n====== Client a bien reçu %d composants =======\n\n\n", params->ressources[0][1]);
+    }
 }
 
 /*

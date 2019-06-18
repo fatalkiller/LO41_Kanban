@@ -157,16 +157,35 @@ int main()
 
     int choix = 0;
     int qtyVoulue = 0;
+
+    // Création du thread client
+    if (pthread_create(&client_tid, NULL, client_job, (void *)&paClient) < 0)
+    {
+        fprintf(stderr, "ERREUR création thread client \n");
+        exit(1);
+    }
+    fprintf(stderr, "Thread client... OK\n");
+
+    struct CommandeClient cmdClient;
+
     while (1)
     {
-        printf("Veuillez saisir une action parmit les suivantes :  \n  1 -> Demande du composant principal \n  2 -> Affichage de la factory \n  3 -> Arréter la factory \n");
+        printf("Veuillez saisir une action parmi les suivantes :  \n  1 -> Demande du composant principal \n  2 -> Affichage de la factory \n  3 -> Arréter la factory \n");
         scanf("%d", &choix);
         if (choix == 1)
         {
             printf("Veuillez saisir la quantité de composant voulue : \n");
             scanf("%d", &qtyVoulue);
-            paClient.ressources[0][1] = qtyVoulue;
-            client_job(&paClient);
+            // paClient.ressources[0][1] = qtyVoulue;
+            // client_job(&paClient);
+            cmdClient.type = 1;
+            cmdClient.qtyCmd = qtyVoulue;
+
+            if (msgsnd(msgid_client, &cmdClient, sizeof(cmdClient) - sizeof(long), 0) == -1)
+            {
+                fprintf(stderr, "MAIN : Erreur envoi requete au thread client \n");
+                exit(1);
+            }
 
             while (affichage == 1)
             {
@@ -177,7 +196,7 @@ int main()
                 sleep(1);
             }
             affichage = 1;
-            printf("=== Le client a bien reçut %d composants \n", qtyVoulue);
+            printf("=== Le client a bien reçu %d composants \n", qtyVoulue);
         }
         else if (choix == 2)
         {

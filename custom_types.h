@@ -1,3 +1,9 @@
+struct CommandeClient
+{
+    long type;  // type pour l'envoi du message dans la file de message (= 1 ici)
+    int qtyCmd; // Quantité commandé par le client
+};
+
 // Carte magnétique
 struct CarteMagnetique
 {
