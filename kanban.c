@@ -10,14 +10,20 @@ void stopAffichage()
     affichage = 0;
 }
 
-int main()
+int main(int argc, char *argv[])
 {
+    if (argc != 2)
+    {
+        printf("\n%s [nom_fichier]\n", argv[0]);
+        exit(-1);
+    }
 
     /// --- Début de l'initialisation ---
 
     // On ouvre le fichier de donnée
     FILE *f = NULL;
-    f = fopen("donnees.txt", "r");
+    f = fopen(argv[1], "r");
+    // f = fopen("donnees.txt", "r");
     // f = fopen("donnees2.txt", "r");
 
     // Récupération des information de la factory

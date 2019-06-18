@@ -665,7 +665,9 @@ void clear_factory()
 {
     // Supprime la file de message de l'homme-flux
     msgctl(msgid, IPC_RMID, NULL);
+    msgctl(msgid_client, IPC_RMID, NULL);
     fprintf(stderr, "## File de message de l'homme-flux %d supprimée\n", msgid);
+    fprintf(stderr, "## File de message de client %d supprimée\n", msgid_client);
 
     // Suppression de toutes les allocations
     fprintf(stderr, "# Libération de toutes les ressources allouées...");
