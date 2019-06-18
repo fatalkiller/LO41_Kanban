@@ -664,6 +664,9 @@ void init_factory(struct ParamFactory *pf, struct ParamAtelier **pas)
 void clear_factory()
 {
     // Supprime la file de message de l'homme-flux
+
+    pthread_cancel(homme_flux_tid);
+    pthread_cancel(client_tid);
     msgctl(msgid, IPC_RMID, NULL);
     msgctl(msgid_client, IPC_RMID, NULL);
     fprintf(stderr, "## File de message de l'homme-flux %d supprimée\n", msgid);
