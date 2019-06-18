@@ -18,6 +18,7 @@ int main()
     // On ouvre le fichier de donnée
     FILE *f = NULL;
     f = fopen("donnees.txt", "r");
+    // f = fopen("donnees2.txt", "r");
 
     // Récupération des information de la factory
     struct ParamFactory factory;
@@ -132,10 +133,11 @@ int main()
     status_factory_full();
 
     // Attendre fin de l'initialisation
-    sleep(5);
+    sleep(2);
 
     // Création du client (se comporte comme un atelier sans vraiment en être un)
     struct ParamAtelier paClient;
+    paClient.idAtelier = factory.nbAteliers;
     paClient.nomAtelier = malloc(sizeof("Client") * sizeof(char));
     strcpy(paClient.nomAtelier, "Client");
     paClient.initConteneurs = 0;
@@ -164,12 +166,13 @@ int main()
             printf("Veuillez saisir la quantité de composant voulue : \n");
             scanf("%d", &qtyVoulue);
             paClient.ressources[0][1] = qtyVoulue;
-            client_job(paClient);
+            client_job(&paClient);
 
             while (affichage == 1)
             {
                 system("clear");
                 status_factory_short();
+                status_client(&paClient);
                 printf("== APPUYER SUR CTRL+C POUR INTERROMPRE L'AFFICHAGE ==\n");
                 sleep(1);
             }
