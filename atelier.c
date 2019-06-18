@@ -44,14 +44,16 @@ void *homme_flux()
         memcpy(&cartesCourantes[carteCourante.idAtelierFournisseur], &carteCourante, sizeof(struct CarteMagnetique));
 
         // on vérifie que l'atelier ne soit pas déjà en production
-        // pthread_mutex_lock(&mutexStatus);
-        // while (statusAteliers[carteCourante.idAtelierFournisseur] == 1)
-        // {
-        //     pthread_mutex_unlock(&mutexStatus);
-        //     pthread_mutex_lock(&mutex_homme_flux);
-        //     pthread_cond_wait(&condition_homme_flux, &mutex_homme_flux);
-        //     pthread_mutex_unlock(&mutex_homme_flux);
-        // }
+        pthread_mutex_lock(&mutexStatus);
+        while (statusAteliers[carteCourante.idAtelierFournisseur] == 1)
+        {
+            pthread_mutex_unlock(&mutexStatus);
+            pthread_mutex_lock(&mutex_homme_flux);
+            pthread_cond_wait(&condition_homme_flux, &mutex_homme_flux);
+            pthread_mutex_unlock(&mutex_homme_flux);
+        }
+        pthread_mutex_unlock(&mutexStatus);
+
         // On demande la production d'un composant dans l'atelier fournisseur
         // de la carte magnétique
         pthread_mutex_lock(&mutexStatus);
